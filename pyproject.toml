@@ -1,0 +1,7 @@
+[tool.mypy]
+python_version = "3.13"
+warn_unused_ignores = true
+strict = false
+
+# [tool.mypy."sortedcontainers.*"]
+# ignore_missing_imports = true
