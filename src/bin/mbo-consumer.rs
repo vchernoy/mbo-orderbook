@@ -4,9 +4,10 @@ use anyhow::Result;
 use clap::Parser;
 use databento::dbn::{
     decode::{AsyncDbnDecoder, DbnMetadata},
-    Action, MboMsg, Side,
+    pretty, Action, MboMsg, Side,
 };
-use tokio::net::TcpStream;
+use mbo_orderbook::orderbook::Market;
+use tokio::net::TcpStream; // crate name = package name from Cargo.toml
 
 /// Connect to mbo-streammer, read DBN MBO data, decode, and print records.
 #[derive(Parser, Debug)]
@@ -55,6 +56,8 @@ async fn main() -> Result<()> {
         metadata.schema, metadata.dataset
     );
 
+    let mut market = Market::new();
+
     let mut rec_idx: usize = 0;
 
     // Main read loop
@@ -65,6 +68,14 @@ async fn main() -> Result<()> {
             print_pretty(rec_idx, mbo);
         } else {
             println!("{rec_idx}: {:?}", mbo);
+        }
+
+        market.apply(mbo.clone());
+
+        if args.pretty {
+            // e.g. get BBO for a specific instrument / publisher
+            let (bid, ask) = market.aggregated_bbo(mbo.hd.instrument_id);
+            println!("BBO after this event: {:?} / {:?}", bid, ask);
         }
 
         if args.limit > 0 && rec_idx >= args.limit {
@@ -83,10 +94,21 @@ fn print_pretty(idx: usize, mbo: &MboMsg) {
     let side = Side::try_from(mbo.side as u8).unwrap_or(Side::None);
 
     // Databento doc: prices are 1e-9 fixed precision units
-    let price = mbo.price as f64 / 1_000_000_000.0;
+    // let price = mbo.price as f64 / 1_000_000_000.0;
 
     println!(
         "#{:<6} ts_event={} instr_id={} oid={} px={:.2} qty={:<4} side={:?} action={:?}",
-        idx, mbo.hd.ts_event, mbo.hd.instrument_id, mbo.order_id, price, mbo.size, side, action,
+        idx,
+        mbo.hd.ts_event,
+        mbo.hd.instrument_id,
+        mbo.order_id,
+        pretty::Px(mbo.price),
+        mbo.size,
+        side,
+        action,
     );
+    // println!(
+    //     "#{:<6} ts_event={} instr_id={} oid={} px={:.2} qty={:<4} side={:?} action={:?}",
+    //     idx, pretty::Ts(mbo.hd.ts_event), mbo.hd.instrument_id, mbo.order_id, pretty::Px(mbo.price), mbo.size, side, action,
+    // );
 }

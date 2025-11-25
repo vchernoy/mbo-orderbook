@@ -224,17 +224,42 @@ impl Book {
 
     fn cancel(&mut self, mbo: MboMsg) {
         let side = mbo.side().unwrap();
-        let level = self.level_mut(side, mbo.price);
-        let order_idx = Self::find_order(level, mbo.order_id);
-        let existing_order = level.get_mut(order_idx).unwrap();
-        assert!(existing_order.size >= mbo.size);
-        existing_order.size -= mbo.size;
+
+        // get level if exists
+        let Some(level) = self.try_level_mut(side, mbo.price) else {
+            // cancel for nonexistent price level → ignore
+            return;
+        };
+
+        // find order if exists
+        let Some(order_idx) = Self::try_find_order(level, mbo.order_id) else {
+            // cancel for nonexistent order → ignore
+            return;
+        };
+
+        // modify size
+        let existing_order = &mut level[order_idx];
+
+        // If exchange sends cancel with too large size, limit it.
+        // (Some venues do this.)
+        if existing_order.size < mbo.size {
+            // You can log, clamp to zero, or just delete
+            existing_order.size = 0;
+        } else {
+            existing_order.size -= mbo.size;
+        }
+
+        // Remove order if size dropped to zero
         if existing_order.size == 0 {
-            level.remove(order_idx).unwrap();
+            level.remove(order_idx);
+
+            // remove empty level
             if level.is_empty() {
                 self.remove_level(side, mbo.price);
             }
-            self.orders_by_id.remove(&mbo.order_id).unwrap();
+
+            // IMPORTANT: remove from orders_by_id only if exists
+            self.orders_by_id.remove(&mbo.order_id);
         }
     }
 
@@ -283,6 +308,11 @@ impl Book {
         levels.get_mut(&price).unwrap()
     }
 
+    fn try_level_mut(&mut self, side: Side, price: i64) -> Option<&mut Level> {
+        let levels = self.side_levels_mut(side);
+        levels.get_mut(&price)
+    }
+
     fn remove_level(&mut self, side: Side, price: i64) {
         self.side_levels_mut(side).remove(&price).unwrap();
     }
@@ -291,6 +321,9 @@ impl Book {
         level.iter().position(|o| o.order_id == order_id).unwrap()
     }
 
+    fn try_find_order(level: &VecDeque<MboMsg>, order_id: u64) -> Option<usize> {
+        level.iter().position(|o| o.order_id == order_id)
+    }
     fn remove_order(level: &mut VecDeque<MboMsg>, order_id: u64) {
         let index = Self::find_order(level, order_id);
         level.remove(index).unwrap();
