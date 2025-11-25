@@ -309,8 +309,7 @@ impl Book {
     }
 
     fn try_level_mut(&mut self, side: Side, price: i64) -> Option<&mut Level> {
-        let levels = self.side_levels_mut(side);
-        levels.get_mut(&price)
+        self.side_levels_mut(side).get_mut(&price)
     }
 
     fn remove_level(&mut self, side: Side, price: i64) {
