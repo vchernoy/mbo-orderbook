@@ -953,6 +953,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
+name = "mbo_orderbook"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "clap",
+ "databento",
+ "env_logger",
+ "futures",
+ "log",
+ "serde",
+ "serde_json",
+ "time",
+ "tokio",
+ "tower",
+]
+
+[[package]]
 name = "memchr"
 version = "2.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1074,23 +1092,6 @@ dependencies = [
  "libc",
  "pkg-config",
  "vcpkg",
-]
-
-[[package]]
-name = "orderbook"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "axum",
- "clap",
- "databento",
- "env_logger",
- "futures",
- "log",
- "serde",
- "serde_json",
- "tokio",
- "tower",
 ]
 
 [[package]]
